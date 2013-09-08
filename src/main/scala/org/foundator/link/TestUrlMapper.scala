@@ -8,6 +8,7 @@ import java.io.File
 object TestUrlMapper extends UrlMapper {
 
     val rootUrl = url()
+    val staticUrl = url(rootUrl, "static", new File("/home/tomcat7/webapp/dont/do/this"))
     val accountUrl = url(rootUrl, "account")
     val signInUrl = url(accountUrl, "sign-in", GET, signInHandler)
     val signOutUrl = url(accountUrl, "sign-out", POST, signOutHandler)
@@ -25,7 +26,7 @@ object TestUrlHandlers {
         JsonResponse(OK, "Hello")
     }
 
-    def signUpHandler(request : Request[String]) = {
+    def signUpHandler(request : Request[String]) : Response[Unit] = {
         StreamResponse.fromFile(OK, new File("test.txt"))
     }
 }
