@@ -1,19 +1,29 @@
 package org.foundator.link
 
-import java.io.{FileInputStream, BufferedInputStream, InputStream, File}
+import java.io._
 import HttpMethod._
+import java.net.{URI, URL}
+import scala.Some
 
-// TODO: Mechanism for serving directories, eg. url(someUrl, "static", new File("../assets"))
-class UrlMapper {
+abstract class UrlMapper {
     final def url() = addUniqueUrl(StrongUrl(None, None))
     final def url[I, O](method : HttpMethod, handler : Request[I] => Response[O]) = addUniqueUrl(StrongUrl[I, O](None, Some((method, handler))))
     final def url(parentUrl : StrongUrl[_, _], path : String) = addUniqueUrl(StrongUrl(Some((parentUrl, path)), None))
     final def url[I, O](parentUrl : StrongUrl[_, _], path : String, method : HttpMethod, handler : Request[I] => Response[O]) = addUniqueUrl(StrongUrl[I, O](Some((parentUrl, path)), Some((method, handler))))
-    final def url(parentUrl : StrongUrl[_, _], path : String, file : File) = // How poor is Scala's type inference?
+
+    final def url(base : URL) : StrongUrl[String, Unit] = url(base.toURI)
+    final def url(base : URI) : StrongUrl[String, Unit] =
+        addUniqueUrl(StrongUrl(
+            None,
+            Some((GET, (r : Request[String]) => handleDirectory(base, r))), directory = true))
+    final def url(parentUrl : StrongUrl[_, _], path : String, base : URL) : StrongUrl[String, Unit] = url(parentUrl, path, base.toURI)
+    final def url(parentUrl : StrongUrl[_, _], path : String, base : URI) : StrongUrl[String, Unit] =
         addUniqueUrl(StrongUrl(
             Some((parentUrl, path)),
-            Some((GET, (r : Request[File]) => handleDirectory(file, r))), directory = true))
+            Some((GET, (r : Request[String]) => handleDirectory(base, r))), directory = true))
 
+
+    // TODO: Look for a way to avoid side effects for constructing the list of URLs
     private def addUniqueUrl[I, O](url : StrongUrl[I, O]) : StrongUrl[I, O] = {
         val path = getPath(url)
         val method = url.handler.map(_._1)
@@ -30,16 +40,16 @@ class UrlMapper {
     }
     private var urls = Set[(List[String], Option[HttpMethod])]()
 
-    private def handleDirectory(baseFile : File, request : Request[File]) : Response[Unit] = {
-        val file = request.value
-        if(file.isAbsolute) StatusResponse(404)
-        else if(file.toString.startsWith(".." + File.separator)) StatusResponse(404)
-        else if(file.toString.contains(File.separator + ".." + File.separator)) StatusResponse(404)
+    private def handleDirectory(base : URI, request : Request[String]) : Response[Unit] = {
+        val file = if(request.value.isEmpty || request.value.startsWith("/")) request.value else "/" + request.value
+        if(file.toString.contains("/../")) StatusResponse(404)
         else {
-            val result = new File(baseFile, file.toString)
-            if(!file.isFile) StatusResponse(404)
-            else if(!file.exists) StatusResponse(404)
-            else StreamResponse.fromFile(200, result)
+            try {
+                val result = base.resolve(file).toURL
+                StreamResponse(200, () => result.openStream())
+            } catch {
+                case e : IOException => StatusResponse(404)
+            }
         }
     }
 }
@@ -51,10 +61,7 @@ case class DuplicateUrlException(path : List[String], method : Option[HttpMethod
 case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : Option[(HttpMethod, Request[I] => Response[O])], directory : Boolean = false)
 
 
-trait Request[I] {
-    def value : I
-    def header(name : String) : Option[String]
-}
+case class Request[I](value : I, header : String => Option[String])
 
 sealed abstract class Response[O] {def status : Int; def headers : List[(String, String)]}
 case class StatusResponse[O](status : Int, headers : List[(String, String)] = List()) extends Response[O]
