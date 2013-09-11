@@ -17,8 +17,8 @@ object TestUrlMapper extends UrlMapper {
 
 object TestUrlHandlers {
 
-    def signInHandler(request : Request[{val count : Int}]) = {
-        JsonResponse(OK, request.value.count)
+    def signInHandler(request : Request[Count]) = {
+        JsonResponse(OK, request.value.count + 1)
     }
 
     def signOutHandler(request : Request[(Int, String)]) = {
@@ -32,13 +32,8 @@ object TestUrlHandlers {
     def checkLogin[I, O](handler : Request[(Int, I)] => Response[O])(request : Request[I]) : Response[O] = {
         val user = -1 // TODO: Check login
         if(user != -1) handler(request.copy(value = (user, request.value)))
-        else StatusResponse(401)
+        else StatusResponse(HttpStatus.NOT_FOUND)
     }
 }
 
-object Main {
-    def main(args : Array[String]) {
-        println(getClass.getResource("/html/index.html"))
-        println(TestUrlMapper.rootUrl)
-    }
-}
+case class Count(count : Int)
