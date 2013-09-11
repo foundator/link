@@ -106,8 +106,11 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
                 resourceHandler.handle(target, baseRequest, httpRequest, httpResponse)
 
             case Some((StrongUrl(_, Some((_, f : Function1[Request[_], Response[_]], manifest)), None), _)) =>
-                // TODO: Make request body overrule the query parameter
-                val value = parseJson(manifest, Option(httpRequest.getParameter("json")).getOrElse("{}"))
+                val value = if(httpRequest.getContentType == "application/json") {
+                    parseJson(manifest, httpRequest.getReader)
+                } else {
+                    parseJson(manifest, Option(httpRequest.getParameter("json")).getOrElse("{}"))
+                }
                 val request = Request(value, name => Option(httpRequest.getHeader(name)))
                 val response = f(request)
                 respond(httpResponse, response)
@@ -136,7 +139,11 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
         }
     }
 
-    def parseJson(manifest : Manifest[_], input : String) = {
+    def parseJson(manifest : Manifest[_], input : String) : Any = {
+        Serialization.read(input)(formats, manifest)
+    }
+
+    def parseJson(manifest : Manifest[_], input : Reader) : Any = {
         Serialization.read(input)(formats, manifest)
     }
 
