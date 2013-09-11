@@ -8,6 +8,7 @@ import java.io.File
 object TestUrlMapper extends UrlMapper {
 
     val rootUrl = url(getClass.getResource("/html/index.html"))
+    val staticUrl = url(rootUrl, "static", getClass.getResource("/html"))
     val accountUrl = url(rootUrl, "account")
     val signInUrl = url(accountUrl, "sign-in", GET, signInHandler)
     val signOutUrl = url(accountUrl, "sign-out", POST, checkLogin(signOutHandler))
