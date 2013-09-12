@@ -41,3 +41,25 @@ object Main {
     }
 }
 ```
+
+The above code will define the following urls:
+
+    /about                          -> class path resource /html/about.html
+    /js/<whatever>                  -> class path resource /js/<whatever>
+    /css/<whatever>                 -> class path resource /css/<whatever>
+    /add?json={"x": <x>, "y": <y>}  -> Handlers.add(Addition(<x>, <y>))
+
+If you're using Maven, your directory structure could look like:
+
+    /pom.xml                -> Maven project file
+    /src/main/resources/    -> Your static assets like HTML, images, etc.
+    /src/mani/scala/        -> The above example code and other scala code.
+
+If you do follow this standard Maven convention, 
+then this library will figure out that you're running in development mode.
+This means that a resource in /target/classes/{whatever} will instead be fetched
+from /src/main/resources/{whatever}, thus giving you instant updates for 
+everything in the resources directory. You only need to restart the server when
+you need to compile code (eg. make edits in the scala/ directory).
+Since we're using Jetty, a restart takes about 2 seconds plus of course the time
+it takes to compile the changed code.
