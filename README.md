@@ -42,6 +42,7 @@ object Main {
 }
 ```
 
+
 The above code will define the following urls:
 
     /about                          -> class path resource /html/about.html
@@ -51,6 +52,9 @@ The above code will define the following urls:
 
 The /add url will only handle GET requests, since that was the specified HTTP method.
 If the json is missing or can't be deserialized, it will report 400 Bad Request.
+
+Development mode
+----------------
 
 If you're using Maven, your directory structure could look like:
 
