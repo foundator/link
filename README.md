@@ -59,7 +59,8 @@ If you're using Maven, your directory structure could look like:
     /src/main/scala/        -> The above example code and other scala code.
 
 If you do follow this standard Maven convention, 
-then this library will figure out that you're running in development mode.
+then this library will figure out when you're running in development mode, based 
+on the pom.xml file existing and that the resource URLs has the `file:` protocol.
 
 This means that a resource in /target/classes/{whatever} will instead be fetched
 from /src/main/resources/{whatever}, thus giving you instant updates for 
