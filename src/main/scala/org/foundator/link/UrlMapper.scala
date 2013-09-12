@@ -2,7 +2,7 @@ package org.foundator.link
 
 import java.io._
 import HttpMethod._
-import java.net.{URI, URL}
+import java.net.{InetSocketAddress, URI, URL}
 import scala.Some
 import org.eclipse.jetty.server.handler.{ContextHandler, ResourceHandler, AbstractHandler}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
@@ -10,8 +10,23 @@ import org.eclipse.jetty.server
 import org.json4s.{FieldSerializer, DefaultFormats}
 import org.json4s.native.Serialization
 import org.eclipse.jetty.util.resource.Resource
+import org.eclipse.jetty.server.Server
 
 abstract class UrlMapper {
+    def run(port : Int) {
+        val server = new Server(port)
+        server.setHandler(new UrlMapperHandler(this))
+        server.start()
+        server.join()
+    }
+
+    def run(address : InetSocketAddress) {
+        val server = new Server(address)
+        server.setHandler(new UrlMapperHandler(this))
+        server.start()
+        server.join()
+    }
+
     final def url() = addUniqueUrl(StrongUrl(None, None))
     final def url[I, O](method : HttpMethod, handler : Request[I] => Response[O])(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](None, Some((method, handler, manifest))))
     final def url(parentUrl : StrongUrl[_, _], path : String) = addUniqueUrl(StrongUrl(Some((parentUrl, path)), None))
