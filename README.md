@@ -56,7 +56,7 @@ If you're using Maven, your directory structure could look like:
 
     /pom.xml                -> Maven project file
     /src/main/resources/    -> Your static assets like HTML, images, etc.
-    /src/mani/scala/        -> The above example code and other scala code.
+    /src/main/scala/        -> The above example code and other scala code.
 
 If you do follow this standard Maven convention, 
 then this library will figure out that you're running in development mode.
