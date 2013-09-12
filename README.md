@@ -55,7 +55,7 @@ If the json is missing or can't be deserialized, it will report 400 Bad Request.
 If you're using Maven, your directory structure could look like:
 
     /pom.xml                -> Maven project file
-    /src/main/resources/    -> Your static assets like HTML, images, etc.
+    /src/main/resources/    -> Your static assets like CSS, images, etc.
     /src/main/scala/        -> The above example code and other scala code.
 
 If you do follow this standard Maven convention, 
