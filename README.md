@@ -60,7 +60,7 @@ If you're using Maven, your directory structure could look like:
 
 If you do follow this standard Maven convention, 
 then this library will figure out when you're running in development mode, based 
-on the pom.xml file existing and that the resource URLs has the `file:` protocol.
+on the pom.xml file existing and that the resource URLs has the `file` protocol.
 
 This means that a resource in /target/classes/{whatever} will instead be fetched
 from /src/main/resources/{whatever}, thus giving you instant updates for 
