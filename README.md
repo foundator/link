@@ -49,6 +49,9 @@ The above code will define the following urls:
     /css/<whatever>                 -> class path resource /css/<whatever>
     /add?json={"x": <x>, "y": <y>}  -> Handlers.add(Addition(<x>, <y>))
 
+The /add url will only handle GET requests, since that was the specified HTTP method.
+If the json is missing or can't be deserialized, it will report 400 Bad Request.
+
 If you're using Maven, your directory structure could look like:
 
     /pom.xml                -> Maven project file
@@ -57,9 +60,12 @@ If you're using Maven, your directory structure could look like:
 
 If you do follow this standard Maven convention, 
 then this library will figure out that you're running in development mode.
+
 This means that a resource in /target/classes/{whatever} will instead be fetched
 from /src/main/resources/{whatever}, thus giving you instant updates for 
-everything in the resources directory. You only need to restart the server when
+everything in the resources directory. 
+
+You only need to restart the server when
 you need to compile code (eg. make edits in the scala/ directory).
 Since we're using Jetty, a restart takes about 2 seconds plus of course the time
 it takes to compile the changed code.
