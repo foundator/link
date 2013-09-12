@@ -39,6 +39,7 @@ abstract class UrlMapper {
 
     // TODO: Look for a way to avoid side effects for constructing the list of URLs
     private def addUniqueUrl[I, O](url : StrongUrl[I, O], extraMethods : List[HttpMethod] = List()) : StrongUrl[I, O] = {
+        if(url.path.exists(_._2.contains("/"))) throw InvalidUrlPartException(url.path.get._2)
         val path = url.absolutePath
         val methods = url.handler.map(_._1) :: extraMethods.map(m => Some(m))
         for(method <- methods) {
@@ -79,6 +80,7 @@ abstract class UrlMapper {
 
 
 case class DuplicateUrlException(path : List[String], method : Option[HttpMethod]) extends RuntimeException("Path: " + path + ", method: " + method)
+case class InvalidUrlPartException(part : String) extends RuntimeException("URL path parts can't contain /: " + part)
 
 
 case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : Option[(HttpMethod, Request[I] => Response[O], Manifest[I])], directory : Option[URI] = None) {
