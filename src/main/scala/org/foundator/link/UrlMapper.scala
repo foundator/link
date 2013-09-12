@@ -7,7 +7,7 @@ import scala.Some
 import org.eclipse.jetty.server.handler.{ContextHandler, ResourceHandler, AbstractHandler}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.eclipse.jetty.server
-import org.json4s.{FieldSerializer, DefaultFormats}
+import org.json4s.{MappingException, FieldSerializer, DefaultFormats}
 import org.json4s.native.Serialization
 import org.eclipse.jetty.util.resource.Resource
 import org.eclipse.jetty.server.Server
@@ -39,7 +39,7 @@ abstract class UrlMapper {
 
     // TODO: Look for a way to avoid side effects for constructing the list of URLs
     private def addUniqueUrl[I, O](url : StrongUrl[I, O], extraMethods : List[HttpMethod] = List()) : StrongUrl[I, O] = {
-        val path = getPath(url)
+        val path = url.absolutePath
         val methods = url.handler.map(_._1) :: extraMethods.map(m => Some(m))
         for(method <- methods) {
             if(urls.contains((path, method.map(_.method)))) throw DuplicateUrlException(path, method)
@@ -47,13 +47,7 @@ abstract class UrlMapper {
         }
         url
     }
-    private def getPath(url : StrongUrl[_, _]) = {
-        def pathOf(url : StrongUrl[_, _]) : List[String] = url match {
-            case StrongUrl(None, _, _) => List()
-            case StrongUrl(Some((parent, path)), _, _) => path :: pathOf(parent)
-        }
-        pathOf(url).reverse
-    }
+
     private var urls = Map[(List[String], Option[String]), StrongUrl[_, _]]()
 
     private[link] def findUrl(method : String, path : List[String]) : Option[(StrongUrl[_, _], List[String])] = {
@@ -87,7 +81,17 @@ abstract class UrlMapper {
 case class DuplicateUrlException(path : List[String], method : Option[HttpMethod]) extends RuntimeException("Path: " + path + ", method: " + method)
 
 
-case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : Option[(HttpMethod, Request[I] => Response[O], Manifest[I])], directory : Option[URI] = None)
+case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : Option[(HttpMethod, Request[I] => Response[O], Manifest[I])], directory : Option[URI] = None) {
+    val absolutePath = {
+        def pathOf(url : StrongUrl[_, _]) : List[String] = url match {
+            case StrongUrl(None, _, _) => List()
+            case StrongUrl(Some((parent, path)), _, _) => path :: pathOf(parent)
+        }
+        pathOf(this).reverse
+    }
+
+    val url = "/" + absolutePath.mkString("/")
+}
 
 
 case class Request[I](value : I, header : String => Option[String])
@@ -144,10 +148,17 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
                 }
 
             case Some((StrongUrl(_, Some((_, f : Function1[Request[_], Response[_]], manifest)), None), _)) =>
-                val value = if(httpRequest.getContentType == "application/json") {
-                    parseJson(manifest, httpRequest.getReader)
-                } else {
-                    parseJson(manifest, Option(httpRequest.getParameter("json")).getOrElse("{}"))
+                val value = try {
+                    if(httpRequest.getContentType == "application/json") {
+                        parseJson(manifest, httpRequest.getReader)
+                    } else {
+                        parseJson(manifest, Option(httpRequest.getParameter("json")).getOrElse("{}"))
+                    }
+                } catch {
+                    case MappingException(message, _) =>
+                        httpResponse.sendError(400, message)
+                        baseRequest.setHandled(true)
+                        return
                 }
                 val request = Request(value, name => Option(httpRequest.getHeader(name)))
                 val response = f(request)
