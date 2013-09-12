@@ -16,9 +16,9 @@ abstract class UrlMapper {
     final def url[I, O](method : HttpMethod, handler : Request[I] => Response[O])(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](None, Some((method, handler, manifest))))
     final def url(parentUrl : StrongUrl[_, _], path : String) = addUniqueUrl(StrongUrl(Some((parentUrl, path)), None))
     final def url[I, O](parentUrl : StrongUrl[_, _], path : String, method : HttpMethod, handler : Request[I] => Response[O])(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](Some((parentUrl, path)), Some((method, handler, manifest))))
-    final def url(base : URL) : StrongUrl[String, Unit] = url(base.toURI)
+    final def url(base : URL) : StrongUrl[String, Unit] = url(if(base != null) base.toURI else null)
     final def url(base : URI) : StrongUrl[String, Unit] = addUniqueUrl(StrongUrl(None, None, directory = Some(base)), List(HttpMethod.GET, HttpMethod.HEAD))
-    final def url(parentUrl : StrongUrl[_, _], path : String, base : URL) : StrongUrl[String, Unit] = url(parentUrl, path, base.toURI)
+    final def url(parentUrl : StrongUrl[_, _], path : String, base : URL) : StrongUrl[String, Unit] = url(parentUrl, path, if(base != null) base.toURI else null)
     final def url(parentUrl : StrongUrl[_, _], path : String, base : URI) : StrongUrl[String, Unit] = addUniqueUrl(StrongUrl(Some((parentUrl, path)), None, directory = Some(base)), List(HttpMethod.GET, HttpMethod.HEAD))
 
 
@@ -48,6 +48,23 @@ abstract class UrlMapper {
             case None =>
         }
         None
+    }
+
+    protected def resource(name : String) : URL = {
+        val resource = getClass.getResource(name)
+        if(resource != null) {
+            val text = resource.toString
+            if(resource.getProtocol == "file") {
+                val suffix = "/target/classes" + name
+                if(text.endsWith(suffix)) {
+                    val file = new File(resource.toURI).toString.dropRight(suffix.length)
+                    if(new File(file, "pom.xml").exists()) {
+                        return new File(new File(file, "src/main/resources"), name).toURI.toURL
+                    }
+                }
+            }
+        }
+        resource
     }
 }
 
@@ -100,10 +117,16 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
         urlMapper.findUrl(httpRequest.getMethod, path) match {
 
             case Some((StrongUrl(_, None, Some(directory)), subPath)) =>
-                baseRequest.setPathInfo("/" + subPath.mkString("/"))
-                val resourceHandler = new ResourceHandler()
-                resourceHandler.setBaseResource(Resource.newResource(directory))
-                resourceHandler.handle(target, baseRequest, httpRequest, httpResponse)
+                if(directory != null) {
+                    baseRequest.setPathInfo("/" + subPath.mkString("/"))
+                    val resourceHandler = new ResourceHandler()
+                    resourceHandler.setBaseResource(Resource.newResource(directory))
+                    resourceHandler.handle(target, baseRequest, httpRequest, httpResponse)
+                } else {
+                    System.err.println("404 The static directory serving '" + baseRequest.getPathInfo + "' was empty or non-existent when this server was started, and will be treated as empty until the server is restarted.")
+                    httpResponse.sendError(404, "Not Found")
+                    baseRequest.setHandled(true)
+                }
 
             case Some((StrongUrl(_, Some((_, f : Function1[Request[_], Response[_]], manifest)), None), _)) =>
                 val value = if(httpRequest.getContentType == "application/json") {
@@ -117,7 +140,6 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
                 baseRequest.setHandled(true)
 
             case None =>
-                baseRequest.setHandled(false)
         }
     }
 
