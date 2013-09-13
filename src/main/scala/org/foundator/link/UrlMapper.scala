@@ -7,7 +7,7 @@ import scala.Some
 import org.eclipse.jetty.server.handler.{ContextHandler, ResourceHandler, AbstractHandler}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.eclipse.jetty.server
-import org.json4s.{MappingException, FieldSerializer, DefaultFormats}
+import org.json4s.{ParserUtil, MappingException, FieldSerializer, DefaultFormats}
 import org.json4s.native.Serialization
 import org.eclipse.jetty.util.resource.Resource
 import org.eclipse.jetty.server.Server
@@ -151,12 +151,16 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
 
             case Some((StrongUrl(_, Some((_, f : Function1[Request[_], Response[_]], manifest)), None), _)) =>
                 val value = try {
-                    if(httpRequest.getContentType == "application/json") {
+                    if(httpRequest.getContentType.matches("application/json([;].*)?")) {
                         parseJson(manifest, httpRequest.getReader)
                     } else {
                         parseJson(manifest, Option(httpRequest.getParameter("json")).getOrElse("{}"))
                     }
                 } catch {
+                    case e : ParserUtil.ParseException =>
+                        httpResponse.sendError(400, e.getMessage)
+                        baseRequest.setHandled(true)
+                        return
                     case MappingException(message, _) =>
                         httpResponse.sendError(400, message)
                         baseRequest.setHandled(true)
