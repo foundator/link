@@ -151,7 +151,7 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
 
             case Some((StrongUrl(_, Some((_, f : Function1[Request[_], Response[_]], manifest)), None), _)) =>
                 val value = try {
-                    if(httpRequest.getContentType.matches("application/json([;].*)?")) {
+                    if(httpRequest.getContentType != null && httpRequest.getContentType.matches("application/json([;].*)?")) {
                         parseJson(manifest, httpRequest.getReader)
                     } else {
                         parseJson(manifest, Option(httpRequest.getParameter("json")).getOrElse("{}"))
