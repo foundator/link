@@ -96,7 +96,7 @@ case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : O
 }
 
 
-case class Request[I](value : I, header : String => Option[String])
+case class Request[I](value : I, header : String => Option[String], cookie : String => Option[String])
 
 sealed abstract class Response[O] {def status : HttpStatus; def headers : List[(String, String)]}
 case class StatusResponse[O](status : HttpStatus, headers : List[(String, String)] = List()) extends Response[O]
@@ -166,7 +166,10 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
                         baseRequest.setHandled(true)
                         return
                 }
-                val request = Request(value, name => Option(httpRequest.getHeader(name)))
+                def cookie(name : String) : Option[String] = httpRequest.getCookies.collectFirst {
+                    case c if c.getName == name => c.getValue
+                }
+                val request = Request(value, name => Option(httpRequest.getHeader(name)), cookie)
                 val response = f(request)
                 respond(httpResponse, response)
                 baseRequest.setHandled(true)
