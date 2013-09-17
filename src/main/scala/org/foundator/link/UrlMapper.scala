@@ -2,7 +2,7 @@ package org.foundator.link
 
 import java.io._
 import HttpMethod._
-import java.net.{InetSocketAddress, URI, URL}
+import java.net.{URLDecoder, InetSocketAddress, URI, URL}
 import scala.Some
 import org.eclipse.jetty.server.handler.{ContextHandler, ResourceHandler, AbstractHandler}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
@@ -167,12 +167,10 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
                         return
                 }
                 def cookie(name : String) : Option[String] = httpRequest.getCookies.collectFirst {
-                    case c if c.getName == name => c.getValue
+                    case c if c.getName == name => URLDecoder.decode(c.getValue, httpRequest.getCharacterEncoding)
                 }
                 val request = Request(value, name => Option(httpRequest.getHeader(name)), cookie)
                 val response = f(request)
-                httpResponse.setContentType("application/json")
-                httpResponse.setCharacterEncoding("UTF-8")
                 respond(httpResponse, response)
                 baseRequest.setHandled(true)
 
@@ -184,6 +182,8 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
         case StatusResponse(status, headers) =>
             updateResponse(httpResponse, status, headers)
         case JsonResponse(status, value : AnyRef, headers) =>
+            httpResponse.setContentType("application/json")
+            httpResponse.setCharacterEncoding("UTF-8")
             updateResponse(httpResponse, status, headers)
             Serialization.write(value, httpResponse.getWriter)(formats)
         case StreamResponse(status, inputStream, headers) =>
