@@ -171,6 +171,8 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
                 }
                 val request = Request(value, name => Option(httpRequest.getHeader(name)), cookie)
                 val response = f(request)
+                httpResponse.setContentType("application/json")
+                httpResponse.setCharacterEncoding("UTF-8")
                 respond(httpResponse, response)
                 baseRequest.setHandled(true)
 
