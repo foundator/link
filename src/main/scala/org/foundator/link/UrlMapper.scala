@@ -167,7 +167,7 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
                         return
                 }
                 def cookie(name : String) : Option[String] = httpRequest.getCookies.collectFirst {
-                    case c if c.getName == name => URLDecoder.decode(c.getValue, httpRequest.getCharacterEncoding)
+                    case c if c.getName == name => URLDecoder.decode(c.getValue, Option(httpRequest.getCharacterEncoding).getOrElse("UTF-8"))
                 }
                 val request = Request(value, name => Option(httpRequest.getHeader(name)), cookie)
                 val response = f(request)
