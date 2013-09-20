@@ -87,7 +87,7 @@ case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : O
     val absolutePath = {
         def pathOf(url : StrongUrl[_, _]) : List[String] = url match {
             case StrongUrl(None, _, _) => List()
-            case StrongUrl(Some((parent, path)), _, _) => path :: pathOf(parent)
+            case StrongUrl(Some((parent, subPath)), _, _) => subPath :: pathOf(parent)
         }
         pathOf(this).reverse
     }
