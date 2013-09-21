@@ -184,7 +184,10 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
         case JsonResponse(status, value : AnyRef, headers) =>
             httpResponse.setContentType("application/json")
             httpResponse.setCharacterEncoding("UTF-8")
-            updateResponse(httpResponse, status, headers)
+            // Internet Explorer caches AJAX GET requests unless it's explicitly prohibited
+            // The Expires: -1 header ensures that it doesn't, except when offline
+            val cache = List("Cache-Control", "Expires", "ETag").exists { header => response.headers.exists(_._1.toLowerCase == header.toLowerCase) }
+            updateResponse(httpResponse, status, if(cache) headers else ("Expires" -> "-1") :: headers)
             Serialization.write(value, httpResponse.getWriter)(formats)
         case StreamResponse(status, inputStream, headers) =>
             updateResponse(httpResponse, status, headers)
