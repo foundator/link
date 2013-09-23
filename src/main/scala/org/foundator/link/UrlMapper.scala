@@ -128,6 +128,7 @@ object HttpStatus {
     case object CONTINUE extends HttpStatus(100)
     case object SWITCHING_PROTOCOLS extends HttpStatus(101)
     case object OK extends HttpStatus(200)
+    case object BAD_REQUEST extends HttpStatus(400)
     case object NOT_FOUND extends HttpStatus(404)
     case object INTERNAL_SERVER_ERROR extends HttpStatus(500)
     case object MOVED extends HttpStatus(301)
