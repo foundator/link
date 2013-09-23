@@ -29,8 +29,10 @@ abstract class UrlMapper {
 
     final def url() = addUniqueUrl(StrongUrl(None, None))
     final def url[I, O](method : HttpMethod, handler : Request[I] => Response[O])(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](None, Some((method, handler, manifest))))
+    final def url[I, O](method : HttpMethod, handler : Request[I] => Response[O], subPaths : Boolean)(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](None, Some((method, handler, manifest)), if(subPaths) Some(null) else None))
     final def url(parentUrl : StrongUrl[_, _], path : String) = addUniqueUrl(StrongUrl(Some((parentUrl, path)), None))
     final def url[I, O](parentUrl : StrongUrl[_, _], path : String, method : HttpMethod, handler : Request[I] => Response[O])(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](Some((parentUrl, path)), Some((method, handler, manifest))))
+    final def url[I, O](parentUrl : StrongUrl[_, _], path : String, method : HttpMethod, handler : Request[I] => Response[O], subPaths : Boolean)(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](Some((parentUrl, path)), Some((method, handler, manifest)), if(subPaths) Some(null) else None))
     final def url(base : URL) : StrongUrl[String, Unit] = url(if(base != null) base.toURI else null)
     final def url(base : URI) : StrongUrl[String, Unit] = addUniqueUrl(StrongUrl(None, None, directory = Some(base)), List(HttpMethod.GET, HttpMethod.HEAD))
     final def url(parentUrl : StrongUrl[_, _], path : String, base : URL) : StrongUrl[String, Unit] = url(parentUrl, path, if(base != null) base.toURI else null)
@@ -96,7 +98,7 @@ case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : O
 }
 
 
-case class Request[I](value : I, header : String => Option[String], cookie : String => Option[String])
+case class Request[I](value : I, path : List[String], header : String => Option[String], cookie : String => Option[String])
 
 sealed abstract class Response[O] {def status : HttpStatus; def headers : List[(String, String)]}
 case class StatusResponse[O](status : HttpStatus, headers : List[(String, String)] = List()) extends Response[O]
@@ -128,6 +130,7 @@ object HttpStatus {
     case object OK extends HttpStatus(200)
     case object NOT_FOUND extends HttpStatus(404)
     case object INTERNAL_SERVER_ERROR extends HttpStatus(500)
+    case object MOVED extends HttpStatus(301)
 }
 
 
@@ -149,7 +152,7 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
                     baseRequest.setHandled(true)
                 }
 
-            case Some((StrongUrl(_, Some((_, f : Function1[Request[_], Response[_]], manifest)), None), _)) =>
+            case Some((StrongUrl(_, Some((_, f : Function1[Request[_], Response[_]], manifest)), _), subPath)) =>
                 val value = try {
                     if(httpRequest.getContentType != null && httpRequest.getContentType.matches("application/json([;].*)?")) {
                         parseJson(manifest, httpRequest.getReader)
@@ -169,7 +172,7 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
                 def cookie(name : String) : Option[String] = httpRequest.getCookies.collectFirst {
                     case c if c.getName == name => URLDecoder.decode(c.getValue, Option(httpRequest.getCharacterEncoding).getOrElse("UTF-8"))
                 }
-                val request = Request(value, name => Option(httpRequest.getHeader(name)), cookie)
+                val request = Request(value, subPath, name => Option(httpRequest.getHeader(name)), cookie)
                 val response = f(request)
                 respond(httpResponse, response)
                 baseRequest.setHandled(true)
@@ -184,10 +187,7 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
         case JsonResponse(status, value : AnyRef, headers) =>
             httpResponse.setContentType("application/json")
             httpResponse.setCharacterEncoding("UTF-8")
-            // Internet Explorer caches AJAX GET requests unless it's explicitly prohibited
-            // The Expires: -1 header ensures that it doesn't, except when offline
-            val cache = List("Cache-Control", "Expires", "ETag").exists { header => response.headers.exists(_._1.toLowerCase == header.toLowerCase) }
-            updateResponse(httpResponse, status, if(cache) headers else ("Expires" -> "-1") :: headers)
+            updateResponse(httpResponse, status, headers)
             Serialization.write(value, httpResponse.getWriter)(formats)
         case StreamResponse(status, inputStream, headers) =>
             updateResponse(httpResponse, status, headers)
@@ -196,9 +196,16 @@ class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
 
     def updateResponse(response: HttpServletResponse, status : HttpStatus, headers : List[(String, String)]) {
         response.setStatus(status.code)
-        for((name, value) <- headers) {
+        for((name, value) <- cacheHeaders(headers)) {
             response.setHeader(name, value)
         }
+    }
+
+    def cacheHeaders(headers : List[(String, String)]) = {
+        // Internet Explorer caches AJAX GET requests unless it's explicitly prohibited
+        // The Expires: -1 header ensures that it doesn't, except when offline
+        val cache = List("Cache-Control", "Expires", "ETag").exists { header => headers.exists(_._1.toLowerCase == header.toLowerCase) }
+        if(cache) headers else ("Expires" -> "-1") :: headers
     }
 
     def parseJson(manifest : Manifest[_], input : String) : Any = {
