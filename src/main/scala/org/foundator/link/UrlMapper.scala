@@ -106,8 +106,8 @@ case class JsonResponse[O](status : HttpStatus, value : O, headers : List[(Strin
 case class StreamResponse[O](status : HttpStatus, inputStream : () => InputStream, headers : List[(String, String)] = List()) extends Response[O]
 
 object StreamResponse {
-    def fromFile[O](status : HttpStatus, file : File, headers : Map[String, String] = Map(), cookies : Map[String, String] = Map()) =
-        StreamResponse[O](status, () => new BufferedInputStream(new FileInputStream(file)))
+    def fromFile[O](status : HttpStatus, file : File, headers : List[(String, String)] = List()) =
+        StreamResponse[O](status, () => new BufferedInputStream(new FileInputStream(file)), headers)
 }
 
 
