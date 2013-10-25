@@ -1,10 +1,9 @@
 package org.foundator.link
 
 import java.io._
-import HttpMethod._
 import java.net.{URLDecoder, InetSocketAddress, URI, URL}
 import scala.Some
-import org.eclipse.jetty.server.handler.{ContextHandler, ResourceHandler, AbstractHandler}
+import org.eclipse.jetty.server.handler.{ResourceHandler, AbstractHandler}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.eclipse.jetty.server
 import org.json4s.{ParserUtil, MappingException, FieldSerializer, DefaultFormats}
