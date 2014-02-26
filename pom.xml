@@ -7,6 +7,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <scala.version>2.10</scala.version>
+        <scala.fullVersion>2.10.3</scala.fullVersion>
     </properties>
 
     <groupId>org.foundator</groupId>
@@ -39,7 +40,7 @@
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
-            <version>${scala.version}.2</version>
+            <version>${scala.fullVersion}</version>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
@@ -91,6 +92,7 @@
                         <jvmArg>-Xms64m</jvmArg>
                         <jvmArg>-Xmx1024m</jvmArg>
                     </jvmArgs>
+                    <scalaVersion>${scala.fullVersion}</scalaVersion>
                 </configuration>
             </plugin>
 
