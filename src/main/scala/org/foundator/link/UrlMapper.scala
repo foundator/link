@@ -3,25 +3,25 @@ package org.foundator.link
 import java.io._
 import java.net.{URLDecoder, InetSocketAddress, URI, URL}
 import scala.Some
-import org.eclipse.jetty.server.handler.{ResourceHandler, AbstractHandler}
+import org.eclipse.jetty.server.handler.{RequestLogHandler, ResourceHandler, AbstractHandler}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.eclipse.jetty.server
 import org.json4s.{ParserUtil, MappingException, FieldSerializer, DefaultFormats}
 import org.json4s.native.Serialization
 import org.eclipse.jetty.util.resource.Resource
-import org.eclipse.jetty.server.Server
+import org.eclipse.jetty.server.{NCSARequestLog, Server}
 
 abstract class UrlMapper {
-    def run(port : Int) {
+    def run(port : Int, accessLogDirectory : Option[String] = None) {
         val server = new Server(port)
-        server.setHandler(new UrlMapperHandler(this))
+        server.setHandler(new UrlMapperHandler(this, accessLogDirectory))
         server.start()
         server.join()
     }
 
-    def run(address : InetSocketAddress) {
+    def run(address : InetSocketAddress, accessLogDirectory : Option[String]) {
         val server = new Server(address)
-        server.setHandler(new UrlMapperHandler(this))
+        server.setHandler(new UrlMapperHandler(this, accessLogDirectory))
         server.start()
         server.join()
     }
@@ -166,9 +166,28 @@ object HttpStatus {
 }
 
 
-class UrlMapperHandler(urlMapper : UrlMapper) extends AbstractHandler {
+class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String] = None) extends AbstractHandler {
+
+    val requestLogHandler = accessLogDirectory map { directory =>
+        val requestLog = new NCSARequestLog()
+        requestLog.setFilename(new File(directory, "/yyyy_mm_dd.request.log").getPath)
+        requestLog.setFilenameDateFormat("yyyy_MM_dd")
+        requestLog.setRetainDays(90)
+        requestLog.setAppend(true)
+        requestLog.setExtended(true)
+        requestLog.setLogCookies(false)
+        requestLog.setLogTimeZone("Europe/Copenhagen")
+        val logHandler = new RequestLogHandler()
+        logHandler.setRequestLog(requestLog)
+        logHandler.start()
+        logHandler
+    }
 
     def handle(target: String, baseRequest: server.Request, httpRequest: HttpServletRequest, httpResponse: HttpServletResponse) {
+        for(logHandler <- requestLogHandler) {
+            logHandler.handle(target, baseRequest, httpRequest, httpResponse)
+        }
+
         val path = if(httpRequest.getPathInfo != null) httpRequest.getPathInfo.split("/").filter(s => s.nonEmpty).toList else List()
         urlMapper.findUrl(httpRequest.getMethod, path) match {
 
