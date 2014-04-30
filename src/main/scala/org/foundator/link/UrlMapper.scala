@@ -10,6 +10,7 @@ import org.json4s.{ParserUtil, MappingException, FieldSerializer, DefaultFormats
 import org.json4s.native.Serialization
 import org.eclipse.jetty.util.resource.Resource
 import org.eclipse.jetty.server.{NCSARequestLog, Server}
+import org.json4s.ext.JodaTimeSerializers
 
 abstract class UrlMapper {
     def run(port : Int, accessLogDirectory : Option[String] = None) {
@@ -276,5 +277,5 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
         }
     }
 
-    private val formats = DefaultFormats + FieldSerializer[Object]()
+    private val formats = DefaultFormats + FieldSerializer[Object]() ++ JodaTimeSerializers.all
 }

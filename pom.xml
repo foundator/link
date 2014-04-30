@@ -65,6 +65,11 @@
             <version>3.2.4</version>
         </dependency>
         <dependency>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-ext_${scala.version}</artifactId>
+            <version>3.2.4</version>
+        </dependency>
+        <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
             <version>8.1.11.v20130520</version>
