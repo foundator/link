@@ -106,8 +106,13 @@ case class JsonResponse[O](status : HttpStatus, value : O, headers : List[(Strin
 case class StreamResponse[O](status : HttpStatus, inputStream : () => InputStream, headers : List[(String, String)] = List()) extends Response[O]
 
 object StreamResponse {
-    def fromFile[O](status : HttpStatus, file : File, headers : List[(String, String)] = List()) =
+    def fromFile[O](status : HttpStatus, file : File, headers : List[(String, String)] = List()) : Response[O] =
         StreamResponse[O](status, () => new BufferedInputStream(new FileInputStream(file)), headers)
+
+    def fromFile[O](file : File, headers : List[(String, String)] = List()) : Response[O] = {
+        val status = if(file.exists()) HttpStatus.OK else HttpStatus.NOT_FOUND
+        fromFile(status, file, headers)
+    }
 }
 
 
