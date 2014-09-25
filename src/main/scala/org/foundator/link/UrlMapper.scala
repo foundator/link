@@ -98,7 +98,13 @@ case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : O
 }
 
 
-case class Request[I](value : I, path : List[String], header : String => Option[String], cookie : String => Option[String])
+case class Request[I](
+    value : I,
+    path : List[String],
+    header : String => Option[String],
+    parameter : String => Option[String],
+    cookie : String => Option[String]
+)
 
 sealed abstract class Response[O] {def status : HttpStatus; def headers : List[(String, String)]}
 case class StatusResponse[O](status : HttpStatus, headers : List[(String, String)] = List()) extends Response[O]
@@ -213,8 +219,10 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
                 val value = try {
                     if(httpRequest.getContentType != null && httpRequest.getContentType.matches("application/json([;].*)?")) {
                         parseJson(manifest, httpRequest.getReader)
+                    } else if(httpRequest.getParameter("json") != null && httpRequest.getParameterMap.size() == 1) {
+                        parseJson(manifest, httpRequest.getParameter("json"))
                     } else {
-                        parseJson(manifest, Option(httpRequest.getParameter("json")).getOrElse("{}"))
+                        parseJson(manifest, "{}")
                     }
                 } catch {
                     case e : ParserUtil.ParseException =>
@@ -229,7 +237,7 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
                 def cookie(name : String) : Option[String] = httpRequest.getCookies.collectFirst {
                     case c if c.getName == name => URLDecoder.decode(c.getValue, Option(httpRequest.getCharacterEncoding).getOrElse("UTF-8"))
                 }
-                val request = Request(value, subPath, name => Option(httpRequest.getHeader(name)), cookie)
+                val request = Request(value, subPath, name => Option(httpRequest.getHeader(name)), name => Option(httpRequest.getParameter(name)), cookie)
                 val response = f(request)
                 respond(httpResponse, response)
                 baseRequest.setHandled(true)
