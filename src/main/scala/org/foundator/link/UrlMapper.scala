@@ -262,7 +262,7 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
     def updateResponse(response: HttpServletResponse, status : HttpStatus, headers : List[(String, String)]) {
         response.setStatus(status.code)
         for((name, value) <- cacheHeaders(headers)) {
-            response.setHeader(name, value)
+            response.addHeader(name, value)
         }
     }
 
