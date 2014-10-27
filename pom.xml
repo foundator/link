@@ -57,17 +57,17 @@
         <dependency>
             <groupId>org.json4s</groupId>
             <artifactId>json4s-ast_${scala.version}</artifactId>
-            <version>3.2.4</version>
+            <version>3.2.9</version>
         </dependency>
         <dependency>
             <groupId>org.json4s</groupId>
             <artifactId>json4s-native_${scala.version}</artifactId>
-            <version>3.2.4</version>
+            <version>3.2.9</version>
         </dependency>
         <dependency>
             <groupId>org.json4s</groupId>
             <artifactId>json4s-ext_${scala.version}</artifactId>
-            <version>3.2.4</version>
+            <version>3.2.9</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
