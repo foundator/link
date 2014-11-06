@@ -294,16 +294,5 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
     }
 
     import org.json4s._
-    val dateFormatWarning = new DateFormat {
-        override def parse(s: String): Option[Date] = {
-            new RuntimeException("Tried to use broken java.util.Date serializer!").printStackTrace()
-            DefaultFormats.dateFormat.parse(s)
-        }
-        override def format(d: Date): String = {
-            new RuntimeException("Tried to use broken java.util.Date serializer!").printStackTrace()
-            DefaultFormats.dateFormat.format(d)
-        }
-    }
-    val defaultFormats = new DefaultFormats { override val dateFormat = dateFormatWarning }
-    private val formats = defaultFormats + FieldSerializer[Object]() ++ JodaTimeSerializers.all
+    private val formats = DefaultFormats + FieldSerializer[Object]() ++ JodaTimeSerializers.all
 }
