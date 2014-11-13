@@ -1,12 +1,15 @@
 package org.foundator.link
 
+import java.io.Reader
 import java.io._
 import java.net.{URLDecoder, InetSocketAddress, URI, URL}
-import scala.Some
+import java.util.Date
+
+import org.json4s.{MappingException, ParserUtil}
+
 import org.eclipse.jetty.server.handler.{RequestLogHandler, ResourceHandler, AbstractHandler}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.eclipse.jetty.server
-import org.json4s.{ParserUtil, MappingException, FieldSerializer, DefaultFormats}
 import org.json4s.native.Serialization
 import org.eclipse.jetty.util.resource.Resource
 import org.eclipse.jetty.server.{NCSARequestLog, Server}
@@ -290,5 +293,6 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
         }
     }
 
+    import org.json4s._
     private val formats = DefaultFormats + FieldSerializer[Object]() ++ JodaTimeSerializers.all
 }
