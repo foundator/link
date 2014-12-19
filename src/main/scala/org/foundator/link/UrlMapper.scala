@@ -118,7 +118,7 @@ object StreamResponse {
     def fromFile[O](status : HttpStatus, file : File, headers : List[(String, String)] = List()) : Response[O] =
         StreamResponse[O](status, () => new BufferedInputStream(new FileInputStream(file)), headers)
 
-    def fromFile[O](file : File, headers : List[(String, String)] = List()) : Response[O] = {
+    def fromFileStatusByFileExists[O](file : File, headers : List[(String, String)] = List()) : Response[O] = {
         val status = if(file.exists()) HttpStatus.OK else HttpStatus.NOT_FOUND
         fromFile(status, file, headers)
     }
