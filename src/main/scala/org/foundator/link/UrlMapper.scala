@@ -106,7 +106,8 @@ case class Request[I](
     path : List[String],
     header : String => Option[String],
     parameter : String => Option[String],
-    cookie : String => Option[String]
+    cookie : String => Option[String],
+    rawRequest : server.Request
 )
 
 sealed abstract class Response[O] {def status : HttpStatus; def headers : List[(String, String)]}
@@ -240,7 +241,7 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
                 def cookie(name : String) : Option[String] = httpRequest.getCookies.collectFirst {
                     case c if c.getName == name => URLDecoder.decode(c.getValue, Option(httpRequest.getCharacterEncoding).getOrElse("UTF-8"))
                 }
-                val request = Request(value, subPath, name => Option(httpRequest.getHeader(name)), name => Option(httpRequest.getParameter(name)), cookie)
+                val request = Request(value, subPath, name => Option(httpRequest.getHeader(name)), name => Option(httpRequest.getParameter(name)), cookie, baseRequest)
                 val response = f(request)
                 respond(httpResponse, response)
                 baseRequest.setHandled(true)
