@@ -3,7 +3,7 @@ package org.foundator.link
 import java.io.Reader
 import java.io._
 import java.net.{URLDecoder, InetSocketAddress, URI, URL}
-import java.util.Date
+import javax.servlet.MultipartConfigElement
 
 import org.json4s.{MappingException, ParserUtil}
 
@@ -199,7 +199,15 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
         logHandler
     }
 
+    private val multiPartConfig = new MultipartConfigElement(System.getProperty("java.io.tmpdir"))
+
     def handle(target: String, baseRequest: server.Request, httpRequest: HttpServletRequest, httpResponse: HttpServletResponse) {
+
+        // NOTE: Support for multi-part upload: http://dev.eclipse.org/mhonarc/lists/jetty-users/msg03294.html
+        if (baseRequest.getContentType != null && baseRequest.getContentType.startsWith("multipart/form-data")) {
+            baseRequest.setAttribute(server.Request.__MULTIPART_CONFIG_ELEMENT, multiPartConfig)
+        }
+
         for(logHandler <- requestLogHandler) {
             logHandler.handle(target, baseRequest, httpRequest, httpResponse)
         }
