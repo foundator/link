@@ -113,15 +113,27 @@ case class Request[I](
 sealed abstract class Response[O] {def status : HttpStatus; def headers : List[(String, String)]}
 case class StatusResponse[O](status : HttpStatus, headers : List[(String, String)] = List()) extends Response[O]
 case class JsonResponse[O](status : HttpStatus, value : O, headers : List[(String, String)] = List()) extends Response[O]
-case class StreamResponse[O](status : HttpStatus, inputStream : () => InputStream, headers : List[(String, String)] = List()) extends Response[O]
+case class StreamResponse[O](status : HttpStatus, writeToOutputStream : OutputStream => Unit, headers : List[(String, String)] = List()) extends Response[O]
 
 object StreamResponse {
     def fromFile[O](status : HttpStatus, file : File, headers : List[(String, String)] = List()) : Response[O] =
-        StreamResponse[O](status, () => new BufferedInputStream(new FileInputStream(file)), headers)
+        StreamResponse.fromInputStream[O](status, () => new BufferedInputStream(new FileInputStream(file)), headers)
+
+    def fromInputStream[O](status : HttpStatus, inputStream : () => InputStream, headers : List[(String, String)] = List()) : Response[O] =
+        StreamResponse[O](status, (out : OutputStream) => copyStream(inputStream(), out), headers)
 
     def fromFileStatusByFileExists[O](file : File, headers : List[(String, String)] = List()) : Response[O] = {
         val status = if(file.exists()) HttpStatus.OK else HttpStatus.NOT_FOUND
         fromFile(status, file, headers)
+    }
+
+    private def copyStream(input : InputStream, output : OutputStream) {
+        val buffer = new Array[Byte](1024 * 4)
+        while(true) {
+            val bytesRead = input.read(buffer)
+            if(bytesRead == -1) return
+            output.write(buffer, 0, bytesRead)
+        }
     }
 }
 
@@ -266,9 +278,9 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
             httpResponse.setCharacterEncoding("UTF-8")
             updateResponse(httpResponse, status, headers)
             Serialization.write(value, httpResponse.getWriter)(formats)
-        case StreamResponse(status, inputStream, headers) =>
+        case StreamResponse(status, writeToOutputStream, headers) =>
             updateResponse(httpResponse, status, headers)
-            copyStream(inputStream(), httpResponse.getOutputStream)
+            writeToOutputStream(httpResponse.getOutputStream)
     }
 
     def updateResponse(response: HttpServletResponse, status : HttpStatus, headers : List[(String, String)]) {
@@ -291,15 +303,6 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
 
     def parseJson(manifest : Manifest[_], input : Reader) : Any = {
         Serialization.read(input)(formats, manifest)
-    }
-
-    def copyStream(input : InputStream, output : OutputStream) {
-        val buffer = new Array[Byte](1024 * 4)
-        while(true) {
-            val bytesRead = input.read(buffer)
-            if(bytesRead == -1) return
-            output.write(buffer, 0, bytesRead)
-        }
     }
 
     import org.json4s._
