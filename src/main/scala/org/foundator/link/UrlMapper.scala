@@ -5,6 +5,7 @@ import java.io._
 import java.net.{URLDecoder, InetSocketAddress, URI, URL}
 import javax.servlet.MultipartConfigElement
 
+import org.foundator.link.HttpStatus.OK
 import org.json4s.{MappingException, ParserUtil}
 
 import org.eclipse.jetty.server.handler.{RequestLogHandler, ResourceHandler, AbstractHandler}
@@ -230,9 +231,17 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
 
             case Some((StrongUrl(_, None, Some(directory)), subPath)) =>
                 if(directory != null) {
-                    baseRequest.setPathInfo("/" + subPath.mkString("/"))
+                    val resource = if(subPath.isEmpty) {
+                        val path = directory.toString.reverse.dropWhile(_ != '/').tail.reverse
+                        val file = directory.toString.reverse.takeWhile(_ != '/').reverse
+                        baseRequest.setPathInfo("/" + (subPath :+ file).mkString("/"))
+                        Resource.newResource(new URI(path))
+                    } else {
+                        baseRequest.setPathInfo("/" + subPath.mkString("/"))
+                        Resource.newResource(directory)
+                    }
                     val resourceHandler = new ResourceHandler()
-                    resourceHandler.setBaseResource(Resource.newResource(directory))
+                    resourceHandler.setBaseResource(resource)
                     resourceHandler.handle(target, baseRequest, httpRequest, httpResponse)
                 } else {
                     System.err.println("404 The static directory serving '" + baseRequest.getPathInfo + "' was empty or non-existent when this server was started, and will be treated as empty until the server is restarted.")
