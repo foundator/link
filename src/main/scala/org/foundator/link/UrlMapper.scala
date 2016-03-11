@@ -68,7 +68,7 @@ abstract class UrlMapper {
 
     // println(Paths.get(this.getClass.getResource("/test-to-be-deleted.txt").toURI).toFile)
     protected def resource(name : String) : URL = {
-        val resource = getClass.getResource(name)
+        val resource = if(name.startsWith("/")) getClass.getResource(name) else new URL(name)
         if(resource != null) {
             val text = resource.toString
             if(resource.getProtocol == "file") {
