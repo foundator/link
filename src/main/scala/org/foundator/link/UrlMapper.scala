@@ -272,7 +272,13 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
                     case c if c.getName == name => URLDecoder.decode(c.getValue, Option(httpRequest.getCharacterEncoding).getOrElse("UTF-8"))
                 }
                 val request = Request(value, subPath, name => Option(httpRequest.getHeader(name)), name => Option(httpRequest.getParameter(name)), cookie, baseRequest)
-                val response = f(request)
+                val response = try {
+                    f(request)
+                } catch {
+                    case e : Exception =>
+                        e.printStackTrace()
+                        throw e
+                }
                 respond(httpResponse, response)
                 baseRequest.setHandled(true)
 
