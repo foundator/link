@@ -1,32 +1,34 @@
 package org.foundator.link
 
-import java.io.Reader
-import java.io._
-import java.net.{URLDecoder, InetSocketAddress, URI, URL}
+import java.io.{Reader, _}
+import java.net.{InetSocketAddress, URI, URL, URLDecoder}
 import javax.servlet.MultipartConfigElement
+import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 
-import org.foundator.link.HttpStatus.OK
-import org.json4s.{MappingException, ParserUtil}
-
-import org.eclipse.jetty.server.handler.{RequestLogHandler, ResourceHandler, AbstractHandler}
-import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.eclipse.jetty.server
-import org.json4s.native.Serialization
-import org.eclipse.jetty.util.resource.Resource
+import org.eclipse.jetty.server.handler.{AbstractHandler, RequestLogHandler, ResourceHandler}
 import org.eclipse.jetty.server.{NCSARequestLog, Server}
+import org.eclipse.jetty.util.resource.Resource
+import org.json4s._
 import org.json4s.ext.JodaTimeSerializers
+import org.json4s.native.Serialization
 
-abstract class UrlMapper {
+abstract class UrlMapper(customFormats: Option[Formats] = None) {
+
+    private val formats = customFormats.getOrElse{
+        DefaultFormats + FieldSerializer[Object]() ++ JodaTimeSerializers.all
+    }
+
     def run(port : Int, accessLogDirectory : Option[String] = None) {
         val server = new Server(port)
-        server.setHandler(new UrlMapperHandler(this, accessLogDirectory))
+        server.setHandler(new UrlMapperHandler(this, accessLogDirectory, formats))
         server.start()
         server.join()
     }
 
     def run(address : InetSocketAddress, accessLogDirectory : Option[String]) {
         val server = new Server(address)
-        server.setHandler(new UrlMapperHandler(this, accessLogDirectory))
+        server.setHandler(new UrlMapperHandler(this, accessLogDirectory, formats))
         server.start()
         server.join()
     }
@@ -196,7 +198,7 @@ object HttpStatus {
 }
 
 
-class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String] = None) extends AbstractHandler {
+class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String] = None, formats: Formats) extends AbstractHandler {
 
     val requestLogHandler = accessLogDirectory map { directory =>
         val requestLog = new NCSARequestLog()
@@ -320,7 +322,4 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
     def parseJson(manifest : Manifest[_], input : Reader) : Any = {
         Serialization.read(input)(formats, manifest)
     }
-
-    import org.json4s._
-    private val formats = DefaultFormats + FieldSerializer[Object]() ++ JodaTimeSerializers.all
 }
