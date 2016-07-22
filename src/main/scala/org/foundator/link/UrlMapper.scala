@@ -13,6 +13,8 @@ import org.json4s._
 import org.json4s.ext.JodaTimeSerializers
 import org.json4s.native.Serialization
 
+import scala.reflect.runtime.universe._
+
 abstract class UrlMapper(customFormats: Option[Formats] = None) {
 
     private val formats = customFormats.getOrElse{
@@ -34,11 +36,11 @@ abstract class UrlMapper(customFormats: Option[Formats] = None) {
     }
 
     final def url() = addUniqueUrl(StrongUrl(None, None))
-    final def url[I, O](method : HttpMethod, handler : Request[I] => Response[O])(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](None, Some((method, handler, manifest))))
-    final def url[I, O](method : HttpMethod, handler : Request[I] => Response[O], subPaths : Boolean)(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](None, Some((method, handler, manifest)), if(subPaths) Some(null) else None))
+    final def url[I : TypeTag, O : TypeTag](method : HttpMethod, handler : Request[I] => Response[O])(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](None, Some((method, handler, manifest, typeOf[I], typeOf[O]))))
+    final def url[I : TypeTag, O : TypeTag](method : HttpMethod, handler : Request[I] => Response[O], subPaths : Boolean)(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](None, Some((method, handler, manifest, typeOf[I], typeOf[O])), if(subPaths) Some(null) else None))
     final def url(parentUrl : StrongUrl[_, _], path : String) = addUniqueUrl(StrongUrl(Some((parentUrl, path)), None))
-    final def url[I, O](parentUrl : StrongUrl[_, _], path : String, method : HttpMethod, handler : Request[I] => Response[O])(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](Some((parentUrl, path)), Some((method, handler, manifest))))
-    final def url[I, O](parentUrl : StrongUrl[_, _], path : String, method : HttpMethod, handler : Request[I] => Response[O], subPaths : Boolean)(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](Some((parentUrl, path)), Some((method, handler, manifest)), if(subPaths) Some(null) else None))
+    final def url[I : TypeTag, O : TypeTag](parentUrl : StrongUrl[_, _], path : String, method : HttpMethod, handler : Request[I] => Response[O])(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](Some((parentUrl, path)), Some((method, handler, manifest, typeOf[I], typeOf[O]))))
+    final def url[I : TypeTag, O : TypeTag](parentUrl : StrongUrl[_, _], path : String, method : HttpMethod, handler : Request[I] => Response[O], subPaths : Boolean)(implicit manifest : Manifest[I]) = addUniqueUrl(StrongUrl[I, O](Some((parentUrl, path)), Some((method, handler, manifest, typeOf[I], typeOf[O])), if(subPaths) Some(null) else None))
     final def url(base : URL) : StrongUrl[String, Unit] = url(if(base != null) base.toURI else null)
     final def url(base : URI) : StrongUrl[String, Unit] = addUniqueUrl(StrongUrl(None, None, directory = Some(base)), List(HttpMethod.GET, HttpMethod.HEAD))
     final def url(parentUrl : StrongUrl[_, _], path : String, base : URL) : StrongUrl[String, Unit] = url(parentUrl, path, if(base != null) base.toURI else null)
@@ -68,6 +70,13 @@ abstract class UrlMapper(customFormats: Option[Formats] = None) {
         None
     }
 
+    /** Returns all URLs that has a method and a handler, as (path, method, requestType, responseType) */
+    def getTypedUrls : List[(String, String, Type, Type)] = {
+        for(((path, Some(method)), url) <- urls; handler <- url.handler) yield {
+            (path.mkString("/"), method, handler._4, handler._5)
+        }
+    }.toList
+
     // println(Paths.get(this.getClass.getResource("/test-to-be-deleted.txt").toURI).toFile)
     protected def resource(name : String) : URL = {
         val resource = if(name.startsWith("/")) getClass.getResource(name) else new URL(name)
@@ -92,7 +101,7 @@ case class DuplicateUrlException(path : List[String], method : Option[HttpMethod
 case class InvalidUrlPartException(part : String) extends RuntimeException("URL path parts can't contain /: " + part)
 
 
-case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : Option[(HttpMethod, Request[I] => Response[O], Manifest[I])], directory : Option[URI] = None) {
+case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : Option[(HttpMethod, Request[I] => Response[O], Manifest[I], Type, Type)], directory : Option[URI] = None) {
     val absolutePath = {
         def pathOf(url : StrongUrl[_, _]) : List[String] = url match {
             case StrongUrl(None, _, _) => List()
@@ -103,7 +112,6 @@ case class StrongUrl[I, O](path : Option[(StrongUrl[_, _], String)], handler : O
 
     val url = "/" + absolutePath.mkString("/")
 }
-
 
 case class Request[I](
     value : I,
@@ -251,7 +259,7 @@ class UrlMapperHandler(urlMapper : UrlMapper, accessLogDirectory : Option[String
                     baseRequest.setHandled(true)
                 }
 
-            case Some((StrongUrl(_, Some((_, f : Function1[Request[_], Response[_]], manifest)), _), subPath)) =>
+            case Some((StrongUrl(_, Some((_, f : Function1[Request[_], Response[_]], manifest, _, _)), _), subPath)) =>
                 val value = try {
                     if(httpRequest.getContentType != null && httpRequest.getContentType.matches("application/json([;].*)?")) {
                         parseJson(manifest, httpRequest.getReader)
