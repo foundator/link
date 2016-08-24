@@ -15,7 +15,18 @@ import org.json4s.native.Serialization
 
 import scala.reflect.runtime.universe._
 
-abstract class UrlMapper(customFormats: Option[Formats] = None) {
+/**
+  * Extend this class to construct an URL mapper that handles HTTP requests.
+  * @param customFormats Additional json4s formats used when (de-)serializing
+  * @param developmentSourceResourceDirectory
+  *     When specified, the mapper will try to server static resources from the source folder,
+  *     rather than from the compiled target folder. This allows the web-server to server files
+  *     updated after build phase.
+  */
+abstract class UrlMapper(
+    customFormats: Option[Formats] = None,
+    developmentSourceResourceDirectory : Option[String] = Some("src/main/resources")
+) {
 
     private val formats = customFormats.getOrElse{
         DefaultFormats + FieldSerializer[Object]() ++ JodaTimeSerializers.all
@@ -81,13 +92,15 @@ abstract class UrlMapper(customFormats: Option[Formats] = None) {
     protected def resource(name : String) : URL = {
         val resource = if(name.startsWith("/")) getClass.getResource(name) else new URL(name)
         if(resource != null) {
-            val text = resource.toString
-            if(resource.getProtocol == "file") {
-                val suffix = "/target/classes" + name
-                if(text.endsWith(suffix)) {
-                    val file = new File(resource.toURI).toString.dropRight(suffix.length)
-                    if(new File(file, "pom.xml").exists()) {
-                        return new File(new File(file, "src/main/resources"), name).toURI.toURL
+            developmentSourceResourceDirectory.foreach{resourceDirectory =>
+                val text = resource.toString
+                if(resource.getProtocol == "file") {
+                    val suffix = "/target/classes" + name
+                    if(text.endsWith(suffix)) {
+                        val file = new File(resource.toURI).toString.dropRight(suffix.length)
+                        if(new File(file, "pom.xml").exists()) {
+                            return new File(new File(file, resourceDirectory), name).toURI.toURL
+                        }
                     }
                 }
             }
