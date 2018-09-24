@@ -14,7 +14,7 @@
     <artifactId>foundator-link_2.11</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>link</name>
+    <name>link_2.11</name>
     <description>A simple statically typed URL handler.</description>
     <url>https://github.com/foundator/link</url>
     <licenses>
